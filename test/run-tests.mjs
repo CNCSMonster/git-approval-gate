@@ -221,11 +221,43 @@ await runTestCase('无头非交互模式安全阻断 (退出码应为 1)', async
     {
       DISPLAY: '',
       WAYLAND_DISPLAY: '',
-      SSH_CONNECTION: ''
+      SSH_CONNECTION: '',
+      PUSHGATE_FORCE_HEADLESS: '1'
     }
   );
   assert.strictEqual(res.code, 1, `无头模式遇到公开仓必须以 1 退出，实际退出码: ${res.code}`);
   assert.ok(res.stderr.includes('SECURITY BLOCKED'), '应输出安全阻断提示');
+});
+
+// -------------------------------------------------------------
+// 测试 3：终端 TUI 交互模式测试 (用户输入授权放行与拒绝)
+// -------------------------------------------------------------
+await runTestCase('终端 TUI 交互：用户输入 "yes" 放行 (退出码应为 0)', async () => {
+  const res = await runProcess(
+    ['origin', 'https://github.com/CNCSMonster/git-push-gate.git'],
+    {
+      DISPLAY: '',
+      WAYLAND_DISPLAY: '',
+      PUSHGATE_TEST_TUI_INPUT: '1'
+    },
+    'yes\n'
+  );
+  assert.strictEqual(res.code, 0, `输入 yes 应授权通过，实际退出码: ${res.code}`);
+  assert.ok(res.stdout.includes('SECURITY PASSED'), '输出应包含放行标识');
+});
+
+await runTestCase('终端 TUI 交互：用户输入非 yes 拒绝 (退出码应为 1)', async () => {
+  const res = await runProcess(
+    ['origin', 'https://github.com/CNCSMonster/git-push-gate.git'],
+    {
+      DISPLAY: '',
+      WAYLAND_DISPLAY: '',
+      PUSHGATE_TEST_TUI_INPUT: '1'
+    },
+    'no\n'
+  );
+  assert.strictEqual(res.code, 1, `输入 no 应拒绝推送，实际退出码: ${res.code}`);
+  assert.ok(res.stdout.includes('SECURITY BLOCKED'), '输出应包含阻断标识');
 });
 
 // -------------------------------------------------------------

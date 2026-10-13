@@ -94,7 +94,33 @@ const repoName = path.basename(process.cwd());
 // 3. 环境探测与浏览器依赖自检 (Dependency Self-Check)
 // ============================================================
 const hasDisplay = Boolean(process.env.DISPLAY || process.env.WAYLAND_DISPLAY);
-const isTTY = Boolean(process.stdin.isTTY);
+
+function checkInteractiveTerminal() {
+  if (process.env.PUSHGATE_FORCE_HEADLESS === '1') {
+    return false;
+  }
+  if (process.env.PUSHGATE_TEST_TUI_INPUT === '1') {
+    return true;
+  }
+  // 如果标准输入、标准输出或标准错误任一是 TTY
+  if (process.stdin.isTTY || process.stdout.isTTY || process.stderr.isTTY) {
+    return true;
+  }
+  // 作为 Git pre-push hook 运行时，Git 会将 stdin 重定向为 pipe 传入 ref 列表。
+  // 检测控制终端 (/dev/tty) 是否存在且可读，以判断是否有用户终端交互环境。
+  if (process.platform !== 'win32') {
+    try {
+      const fd = fs.openSync('/dev/tty', 'r');
+      fs.closeSync(fd);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+const isTTY = checkInteractiveTerminal();
 
 function findChromiumBrowser() {
   if (process.env.MOCK_NO_BROWSER === '1') {
@@ -381,20 +407,38 @@ function runTuiGate() {
   console.log(diffStats || '无本地未推文件变更');
   console.log('\x1b[35m--------------------------------------------------------------------\x1b[0m');
 
+  let inputStream = process.stdin;
+  let ttyFd = null;
+
+  // 在 Git pre-push hook 中，stdin 会被重定向为管道承载 ref 列表。
+  // 非测试环境下，优先通过 /dev/tty 直接接管控制终端键盘输入。
+  if (process.env.PUSHGATE_TEST_TUI_INPUT !== '1' && process.platform !== 'win32') {
+    try {
+      ttyFd = fs.openSync('/dev/tty', 'r');
+      inputStream = fs.createReadStream(null, { fd: ttyFd });
+    } catch {}
+  }
+
   const rl = readline.createInterface({
-    input: process.stdin,
+    input: inputStream,
     output: process.stdout
   });
 
   const timer = setTimeout(() => {
     console.log('\n\x1b[31m❌ [超时拦截] 30 秒无输入，已自动终止推送！\x1b[0m');
     rl.close();
+    if (ttyFd !== null) {
+      try { fs.closeSync(ttyFd); } catch {}
+    }
     process.exit(1);
   }, 30000);
 
   rl.question('\x1b[32;1m确认授权本次公开推送？输入 "yes" 放行，其它任意键拒绝 (30s 超时): \x1b[0m', (answer) => {
     clearTimeout(timer);
     rl.close();
+    if (ttyFd !== null) {
+      try { fs.closeSync(ttyFd); } catch {}
+    }
     if (answer.trim().toLowerCase() === 'yes') {
       console.log('\x1b[32m✅ [SECURITY PASSED] 已获得人工确认，放行本次推送。\x1b[0m\n');
       process.exit(0);
