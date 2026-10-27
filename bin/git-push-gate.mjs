@@ -205,8 +205,8 @@ function runGuiGate(browserBin) {
     }
   } catch {}
 
-  const winW = 620;
-  const winH = 500;
+  const winW = 900;
+  const winH = 640;
   const posX = Math.max(0, Math.round((screenW - winW) / 2));
   const posY = Math.max(0, Math.round(screenH * 0.36 - winH / 2));
 
@@ -309,14 +309,14 @@ function runGuiGate(browserBin) {
     <div class="scroll-box"><b>[Commits 摘要]</b>\n${escapeHtml(commitsSummary)}\n\n<b>[变更统计]</b>\n${escapeHtml(diffStats || '无本地未推文件变更')}</div>
   </div>
   <div class="footer">
-    <div class="timer" id="timer">30 秒后自动拦截</div>
+    <div class="timer" id="timer">120 秒后自动拦截</div>
     <div class="btn-group">
       <button class="btn-deny" onclick="action('/deny')">❌ 拒绝拦截 (Esc)</button>
       <button class="btn-allow" onclick="action('/allow')">✅ 授权推送 (Enter)</button>
     </div>
   </div>
   <script>
-    let left = 30;
+    let left = 120;
     const timerEl = document.getElementById('timer');
     const interval = setInterval(() => {
       left--;
@@ -382,6 +382,12 @@ function runGuiGate(browserBin) {
       detached: true
     });
 
+    // 响一声，避免窗口被遮挡时人完全无感（WSL 环境走 Windows 提示音）
+    try {
+      spawn('powershell.exe', ['-NoProfile', '-Command', '[console]::beep(880,400)'],
+        { stdio: 'ignore', detached: true }).unref();
+    } catch {}
+
     chromeProcess.on('exit', () => {
       finish(1);
     });
@@ -389,7 +395,7 @@ function runGuiGate(browserBin) {
 
   setTimeout(() => {
     finish(1);
-  }, 31000);
+  }, 121000);
 }
 
 // ============================================================
