@@ -122,6 +122,14 @@ function checkInteractiveTerminal() {
 
 const isTTY = checkInteractiveTerminal();
 
+let pushgateMode = process.env.PUSHGATE_MODE;
+if (!pushgateMode) {
+  try {
+    pushgateMode = execSync('git config pushgate.mode 2>/dev/null', { encoding: 'utf-8' }).trim();
+  } catch {}
+}
+const forceTui = pushgateMode === 'tui' || process.env.PUSHGATE_FORCE_TUI === '1';
+
 function findChromiumBrowser() {
   if (process.env.MOCK_NO_BROWSER === '1') {
     return null;
@@ -148,8 +156,12 @@ function findChromiumBrowser() {
 // 4. 三态自适应分流 (Adaptive Three-Tier Dispatch)
 // ============================================================
 
+// 4.0 显式指定/偏好 TUI 终端模式
+if (forceTui && isTTY) {
+  runTuiGate();
+}
 // 4.1 GUI 桌面模式
-if (hasDisplay) {
+else if (hasDisplay) {
   const browserBin = findChromiumBrowser();
   if (!browserBin) {
     console.error(`
@@ -382,11 +394,28 @@ function runGuiGate(browserBin) {
       detached: true
     });
 
-    // 响一声，避免窗口被遮挡时人完全无感（WSL 环境走 Windows 提示音）
+    // 提醒：卡片可能落在其它窗口或虚拟桌面后面，必须给出跨平台的正反馈。
+    // 原生 Linux 没有 powershell.exe，旧实现会静默失败 → 人完全无感。
     try {
-      spawn('powershell.exe', ['-NoProfile', '-Command', '[console]::beep(880,400)'],
-        { stdio: 'ignore', detached: true }).unref();
+      if (process.platform === 'linux') {
+        spawn('notify-send', ['-u', 'critical', '-a', 'git-push-gate',
+          '公开仓推送待授权', '请到授权卡片上点击「✅ 授权推送」'],
+          { stdio: 'ignore', detached: true }).unref();
+        try { fs.writeSync(fs.openSync('/dev/tty', 'w'), '\x07'); } catch {}
+      } else {
+        spawn('powershell.exe', ['-NoProfile', '-Command', '[console]::beep(880,400)'],
+          { stdio: 'ignore', detached: true }).unref();
+      }
     } catch {}
+
+    // 终端里也留一行，避免"窗口被遮挡 = 完全无感"。
+    try {
+      fs.writeSync(fs.openSync('/dev/tty', 'w'),
+        '\n🔔 已弹出公开仓推送授权卡片（Chromium 独立窗口，约 900×640，居中偏上）。\n' +
+        '   若没看到，请检查其它窗口 / 虚拟桌面；121 秒内未确认会自动拒绝。\n\n');
+    } catch {
+      console.error('\n🔔 已弹出公开仓推送授权卡片；121 秒内未确认会自动拒绝。\n');
+    }
 
     chromeProcess.on('exit', () => {
       finish(1);
@@ -399,57 +428,73 @@ function runGuiGate(browserBin) {
 }
 
 // ============================================================
-// 6. 模式实现：SSH 交互终端降级 (Terminal TUI Fallback)
+// 6. 模式实现：交互式终端模式 (Terminal TUI Mode)
 // ============================================================
 function runTuiGate() {
-  console.log('\n\x1b[35;1m====================================================================\x1b[0m');
-  console.log('\x1b[31;1m🚨 [git-push-gate] 公开仓推送安全审计门禁 (SSH / TTY 模式)\x1b[0m');
-  console.log('\x1b[35;1m====================================================================\x1b[0m');
-  console.log(`\x1b[34m目标仓库:\x1b[0m ${repoName}`);
-  console.log(`\x1b[34m远端地址:\x1b[0m ${remoteUrl}`);
-  console.log('\n\x1b[33;1m📋 [Commits 摘要]\x1b[0m');
-  console.log(commitsSummary);
-  console.log('\n\x1b[36;1m📊 [变更统计]\x1b[0m');
-  console.log(diffStats || '无本地未推文件变更');
-  console.log('\x1b[35m--------------------------------------------------------------------\x1b[0m');
-
   let inputStream = process.stdin;
-  let ttyFd = null;
+  let outputStream = process.stdout;
+  let ttyInFd = null;
+  let ttyOutStream = null;
 
-  // 在 Git pre-push hook 中，stdin 会被重定向为管道承载 ref 列表。
-  // 非测试环境下，优先通过 /dev/tty 直接接管控制终端键盘输入。
+  // 在 Git pre-push hook 中，stdin/stdout 会被 pre-commit 等管道重定向。
+  // 非测试环境下，优先通过 /dev/tty 接管输入输出，防止 pre-commit 缓冲输出导致提示语被吞。
   if (process.env.PUSHGATE_TEST_TUI_INPUT !== '1' && process.platform !== 'win32') {
     try {
-      ttyFd = fs.openSync('/dev/tty', 'r');
-      inputStream = fs.createReadStream(null, { fd: ttyFd });
+      ttyInFd = fs.openSync('/dev/tty', 'r');
+      inputStream = fs.createReadStream(null, { fd: ttyInFd });
+    } catch {}
+    try {
+      const ttyOutFd = fs.openSync('/dev/tty', 'w');
+      ttyOutStream = fs.createWriteStream(null, { fd: ttyOutFd });
+      outputStream = ttyOutStream;
     } catch {}
   }
 
+  function print(msg = '') {
+    if (ttyOutStream) {
+      ttyOutStream.write(msg + '\n');
+    } else {
+      console.log(msg);
+    }
+  }
+
+  print('\n\x1b[35;1m====================================================================\x1b[0m');
+  print('\x1b[31;1m🚨 [git-push-gate] 公开仓推送安全审计门禁 (TTY 终端交互模式)\x1b[0m');
+  print('\x1b[35;1m====================================================================\x1b[0m');
+  print(`\x1b[34m目标仓库:\x1b[0m ${repoName}`);
+  print(`\x1b[34m远端地址:\x1b[0m ${remoteUrl}`);
+  print('\n\x1b[33;1m📋 [Commits 摘要]\x1b[0m');
+  print(commitsSummary);
+  print('\n\x1b[36;1m📊 [变更统计]\x1b[0m');
+  print(diffStats || '无本地未推文件变更');
+  print('\x1b[35m--------------------------------------------------------------------\x1b[0m');
+
   const rl = readline.createInterface({
     input: inputStream,
-    output: process.stdout
+    output: outputStream
   });
 
-  const timer = setTimeout(() => {
-    console.log('\n\x1b[31m❌ [超时拦截] 30 秒无输入，已自动终止推送！\x1b[0m');
+  const cleanup = () => {
     rl.close();
-    if (ttyFd !== null) {
-      try { fs.closeSync(ttyFd); } catch {}
+    if (ttyInFd !== null) {
+      try { fs.closeSync(ttyInFd); } catch {}
     }
+  };
+
+  const timer = setTimeout(() => {
+    print('\n\x1b[31m❌ [超时拦截] 30 秒无输入，已自动终止推送！\x1b[0m');
+    cleanup();
     process.exit(1);
   }, 30000);
 
   rl.question('\x1b[32;1m确认授权本次公开推送？输入 "yes" 放行，其它任意键拒绝 (30s 超时): \x1b[0m', (answer) => {
     clearTimeout(timer);
-    rl.close();
-    if (ttyFd !== null) {
-      try { fs.closeSync(ttyFd); } catch {}
-    }
+    cleanup();
     if (answer.trim().toLowerCase() === 'yes') {
-      console.log('\x1b[32m✅ [SECURITY PASSED] 已获得人工确认，放行本次推送。\x1b[0m\n');
+      print('\x1b[32m✅ [SECURITY PASSED] 已获得人工确认，放行本次推送。\x1b[0m\n');
       process.exit(0);
     } else {
-      console.log('\x1b[31m❌ [SECURITY BLOCKED] 用户已拒绝本次公开推送！\x1b[0m\n');
+      print('\x1b[31m❌ [SECURITY BLOCKED] 用户已拒绝本次公开推送！\x1b[0m\n');
       process.exit(1);
     }
   });
