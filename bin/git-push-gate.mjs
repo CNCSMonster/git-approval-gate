@@ -395,18 +395,23 @@ function runGuiGate(browserBin) {
     });
 
     // 提醒：卡片可能落在其它窗口或虚拟桌面后面，必须给出跨平台的正反馈。
-    // 原生 Linux 没有 powershell.exe，旧实现会静默失败 → 人完全无感。
-    try {
-      if (process.platform === 'linux') {
-        spawn('notify-send', ['-u', 'critical', '-a', 'git-push-gate',
-          '公开仓推送待授权', '请到授权卡片上点击「✅ 授权推送」'],
-          { stdio: 'ignore', detached: true }).unref();
-        try { fs.writeSync(fs.openSync('/dev/tty', 'w'), '\x07'); } catch {}
-      } else {
-        spawn('powershell.exe', ['-NoProfile', '-Command', '[console]::beep(880,400)'],
-          { stdio: 'ignore', detached: true }).unref();
-      }
-    } catch {}
+    // 注意：spawn 的 ENOENT 是异步 'error' 事件，try/catch 捕不到，必须挂 error 监听，
+    // 否则进程会因未捕获异常直接崩溃（2026-11-03 实测踩过）。
+    const notify = (bin, args) => {
+      try {
+        const child = spawn(bin, args, { stdio: 'ignore', detached: true });
+        child.on('error', () => {});
+        child.unref();
+      } catch {}
+    };
+
+    if (process.platform === 'linux') {
+      notify('notify-send', ['-u', 'critical', '-a', 'git-push-gate',
+        '公开仓推送待授权', '请到授权卡片上点击「✅ 授权推送」']);
+      try { fs.writeSync(fs.openSync('/dev/tty', 'w'), '\x07'); } catch {}
+    } else {
+      notify('powershell.exe', ['-NoProfile', '-Command', '[console]::beep(880,400)']);
+    }
 
     // 终端里也留一行，避免"窗口被遮挡 = 完全无感"。
     try {
