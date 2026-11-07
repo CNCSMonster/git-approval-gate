@@ -1,4 +1,4 @@
-# git-push-gate: Public Push Safety Gate
+# git-approval-gate: Public Push Safety Gate
 
 English | [简体中文](./README.zh-CN.md)
 
@@ -7,11 +7,11 @@ English | [简体中文](./README.zh-CN.md)
 
 ---
 
-## 💡 Why git-push-gate?
+## 💡 Why git-approval-gate?
 
 Autonomous coding agents (Cursor, Pi, Claude Code, Aider) operate with elevated terminal privileges. If an agent hallucinates or encounters prompt injection, it might silently execute `git push origin main` and leak internal credentials or unverified code directly to public GitHub repositories.
 
-**`git-push-gate` establishes a safety guard before Git network transmission:**
+**`git-approval-gate` establishes a safety guard before Git network transmission:**
 - **Zero Friction on Private Remotes**: Pushes to internal bare repos, private SSH remotes, or VPN subnets proceed in **0.00s silently** without interrupting flow;
 - **Mandatory Review on Public Remotes**: Pushes to public hosts (GitHub, GitLab, etc.) **strictly require physical human confirmation**;
 - **Transparent Commits & Diff Stat**: Automatically inspects and displays **pending commit titles and file change statistics (Diff Stat)** in a scrollable panel;
@@ -50,7 +50,7 @@ If you want the gate active in your local project without committing any new fil
 # 1. Write the cryptographically pinned private config:
 cat << 'EOF' > .git/pre-commit-config.yaml
 repos:
-  - repo: https://github.com/CNCSMonster/git-push-gate
+  - repo: https://github.com/CNCSMonster/git-approval-gate
     rev: 258340a7510b474402a1093f806a9950c197931e
     hooks:
       - id: public-push-gui-gate
@@ -65,7 +65,7 @@ If you want every developer to be protected after cloning:
 Create `.pre-commit-config.yaml` at your repository root:
 ```yaml
 repos:
-  - repo: https://github.com/CNCSMonster/git-push-gate
+  - repo: https://github.com/CNCSMonster/git-approval-gate
     rev: 258340a7510b474402a1093f806a9950c197931e
     hooks:
       - id: public-push-gui-gate
@@ -121,7 +121,7 @@ Many engineers ask: **"What if an upstream open-source hook repository gets comp
 To eliminate supply chain risks entirely, this project adheres to the **zero-dependency, quick-audit, and cryptographic pinning** doctrine:
 
 1. **Zero Third-Party Dependencies (Auditable in minutes)**:
-   This tool has no bloated npm dependencies. The entire logic lives in a single file [`bin/git-push-gate.mjs`](./bin/git-push-gate.mjs) (~200 lines of standard Node.js). You or your security team can inspect the entire codebase line-by-line within minutes to confirm there are zero hidden network calls.
+   This tool has no bloated npm dependencies. The entire logic lives in a single file [`bin/git-approval-gate.mjs`](./bin/git-approval-gate.mjs) (~200 lines of standard Node.js). You or your security team can inspect the entire codebase line-by-line within minutes to confirm there are zero hidden network calls.
 2. **Why pin the 40-character Commit SHA instead of tags?**
    - Floating tags (e.g. `v1.0.0`) could theoretically be reassigned by an upstream attacker;
    - A Git **40-character Commit SHA** is calculated from all repository files. **If an attacker changes even a single whitespace in the code, the hash changes completely.**
@@ -129,7 +129,7 @@ To eliminate supply chain risks entirely, this project adheres to the **zero-dep
 3. **How to inspect the commit hash for any future release?**
    ```bash
    # Retrieve the exact 40-character commit hash for a tag using native Git:
-   git ls-remote https://github.com/CNCSMonster/git-push-gate.git refs/tags/v1.0.0
+   git ls-remote https://github.com/CNCSMonster/git-approval-gate.git refs/tags/v1.0.0
    ```
    Output: `258340a7510b474402a1093f806a9950c197931e`. Simply paste that hash into the `rev:` field.
 

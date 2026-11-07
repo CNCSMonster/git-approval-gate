@@ -25,7 +25,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Syntax check
-        run: node --check bin/git-push-gate.mjs
+        run: node --check bin/git-approval-gate.mjs
 
       - name: Run End-to-End Test Suite with GUI Virtual Display
         run: |

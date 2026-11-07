@@ -1,9 +1,9 @@
 {
-  "name": "git-push-gate",
+  "name": "git-approval-gate",
   "version": "1.0.0",
   "description": "Ergonomic centered GUI / TUI audit gate before pushing commits to public Git remotes (GitHub, Gitee, GitLab).",
   "bin": {
-    "git-push-gate": "./bin/git-push-gate.mjs"
+    "git-approval-gate": "./bin/git-approval-gate.mjs"
   },
   "scripts": {
     "test": "node test/run-tests.mjs"

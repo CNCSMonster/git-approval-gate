@@ -1,4 +1,4 @@
-# git-push-gate: 公开仓推送安全审计门禁
+# git-approval-gate: 公开仓推送安全审计门禁
 
 [English](./README.md) | 简体中文
 
@@ -11,7 +11,7 @@
 
 在深度使用 Cursor、Pi、Claude Code、Aider 等自主编程智能体（AI Coding Agents）时，智能体拥有极高的终端执行权限。一旦智能体产生幻觉或受到 Prompt 注入影响，可能在后台直接执行 `git push origin main`，将包含内部凭据、未脱敏内容或未测试代码推送到 GitHub 公开仓库。
 
-**`git-push-gate` 在 Git 发起网络传输前设立拦截屏障**：
+**`git-approval-gate` 在 Git 发起网络传输前设立拦截屏障**：
 - **私有仓免审放行**：推向内网服务器、本地 bare 仓或私有云时静默放行，不打断正常开发流程；
 - **公开仓强制审查**：推向 GitHub 等公网托管平台时，必须由开发者在桌面弹窗或终端交互中确认；
 - **变更透明可见**：弹窗自动提取并展示**即将推送的 Commit 摘要与文件改动行数统计（Diff Stat）**；
@@ -50,7 +50,7 @@
 # 1. 在本地 .git/ 内部写入锁定提交哈希的私有配置：
 cat << 'EOF' > .git/pre-commit-config.yaml
 repos:
-  - repo: https://github.com/CNCSMonster/git-push-gate
+  - repo: https://github.com/CNCSMonster/git-approval-gate
     rev: 258340a7510b474402a1093f806a9950c197931e
     hooks:
       - id: public-push-gui-gate
@@ -65,7 +65,7 @@ pre-commit install --config .git/pre-commit-config.yaml --hook-type pre-push
 在项目根目录创建 `.pre-commit-config.yaml`：
 ```yaml
 repos:
-  - repo: https://github.com/CNCSMonster/git-push-gate
+  - repo: https://github.com/CNCSMonster/git-approval-gate
     rev: 258340a7510b474402a1093f806a9950c197931e
     hooks:
       - id: public-push-gui-gate
@@ -121,7 +121,7 @@ git push --dry-run origin <你的分支名>
 本项目遵循**零依赖、低代码量、提交哈希锁定**的原则：
 
 1. **零第三方依赖**：
-   本工具未引入任何第三方 npm 依赖包，核心逻辑全部位于 [`bin/git-push-gate.mjs`](./bin/git-push-gate.mjs) 单一文件中（约 200 行原生 Node.js 代码），代码可快速通读审计，确保不存在未授权的网络请求。
+   本工具未引入任何第三方 npm 依赖包，核心逻辑全部位于 [`bin/git-approval-gate.mjs`](./bin/git-approval-gate.mjs) 单一文件中（约 200 行原生 Node.js 代码），代码可快速通读审计，确保不存在未授权的网络请求。
 2. **为什么推荐锁定 40 位 Commit 哈希而非 Release 标签？**
    - Git 标签（如 `v1.0.0`）在上游可被强制移动（Force Push）；
    - 40 位 **Commit SHA** 是基于提交内容的密码学哈希。代码若发生任何改动，哈希值都会改变；
@@ -129,7 +129,7 @@ git push --dry-run origin <你的分支名>
 3. **如何查询目标版本的 Commit 哈希？**
    ```bash
    # 使用 Git 原生命令查询远程标签对应的真实哈希：
-   git ls-remote https://github.com/CNCSMonster/git-push-gate.git refs/tags/v1.0.0
+   git ls-remote https://github.com/CNCSMonster/git-approval-gate.git refs/tags/v1.0.0
    ```
    输出示例：`258340a7510b474402a1093f806a9950c197931e`，将该哈希填入 `rev:` 字段即可。
 

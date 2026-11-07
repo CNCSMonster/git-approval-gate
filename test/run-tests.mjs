@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const gateBinPath = path.resolve(__dirname, '../bin/git-push-gate.mjs');
+const gateBinPath = path.resolve(__dirname, '../bin/git-approval-gate.mjs');
 
 let passedCount = 0;
 let totalCount = 0;
@@ -191,7 +191,7 @@ async function waitForPageDebuggerUrl(cdpPort, expectedPort, maxWaitMs = 15000) 
 }
 
 console.log('\n========================================');
-console.log('🧪 开始运行 git-push-gate 自动化测试套件');
+console.log('🧪 开始运行 git-approval-gate 自动化测试套件');
 console.log('========================================\n');
 
 // -------------------------------------------------------------
@@ -217,7 +217,7 @@ await runTestCase('私有仓免审放行 (.internal 域名)', async () => {
 // -------------------------------------------------------------
 await runTestCase('无头非交互模式安全阻断 (退出码应为 1)', async () => {
   const res = await runProcess(
-    ['origin', 'https://github.com/CNCSMonster/git-push-gate.git'],
+    ['origin', 'https://github.com/CNCSMonster/git-approval-gate.git'],
     {
       DISPLAY: '',
       WAYLAND_DISPLAY: '',
@@ -234,7 +234,7 @@ await runTestCase('无头非交互模式安全阻断 (退出码应为 1)', async
 // -------------------------------------------------------------
 await runTestCase('终端 TUI 交互：用户输入 "yes" 放行 (退出码应为 0)', async () => {
   const res = await runProcess(
-    ['origin', 'https://github.com/CNCSMonster/git-push-gate.git'],
+    ['origin', 'https://github.com/CNCSMonster/git-approval-gate.git'],
     {
       DISPLAY: '',
       WAYLAND_DISPLAY: '',
@@ -248,7 +248,7 @@ await runTestCase('终端 TUI 交互：用户输入 "yes" 放行 (退出码应�
 
 await runTestCase('终端 TUI 交互：用户输入非 yes 拒绝 (退出码应为 1)', async () => {
   const res = await runProcess(
-    ['origin', 'https://github.com/CNCSMonster/git-push-gate.git'],
+    ['origin', 'https://github.com/CNCSMonster/git-approval-gate.git'],
     {
       DISPLAY: '',
       WAYLAND_DISPLAY: '',
@@ -272,7 +272,7 @@ if (!hasDisplay) {
   await runTestCase('真实 GUI 端到端：CDP 真实点击「授权推送」按钮 (.btn-allow)', async () => {
     const cdpPort = await getFreePort();
     const profileDir = `/tmp/pushgate-test-profile-${Date.now()}-allow`;
-    const child = spawn(process.execPath, [gateBinPath, 'origin', 'https://github.com/CNCSMonster/git-push-gate.git'], {
+    const child = spawn(process.execPath, [gateBinPath, 'origin', 'https://github.com/CNCSMonster/git-approval-gate.git'], {
       env: {
         ...process.env,
         PUSHGATE_TEST_MODE: '1',
@@ -346,7 +346,7 @@ if (!hasDisplay) {
   await runTestCase('真实 GUI 端到端：CDP 真实点击「拒绝拦截」按钮 (.btn-deny)', async () => {
     const cdpPort = await getFreePort();
     const profileDir = `/tmp/pushgate-test-profile-${Date.now()}-deny`;
-    const child = spawn(process.execPath, [gateBinPath, 'origin', 'https://github.com/CNCSMonster/git-push-gate.git'], {
+    const child = spawn(process.execPath, [gateBinPath, 'origin', 'https://github.com/CNCSMonster/git-approval-gate.git'], {
       env: {
         ...process.env,
         PUSHGATE_TEST_MODE: '1',

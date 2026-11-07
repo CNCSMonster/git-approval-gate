@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * git-push-gate: Public Push Safety Gate
+ * git-approval-gate: Public Push Safety Gate
  *
  * 核心功能：
  * 1. 拦截发往公开 Git 托管平台的未授权推送
@@ -165,7 +165,7 @@ else if (hasDisplay) {
   const browserBin = findChromiumBrowser();
   if (!browserBin) {
     console.error(`
-\x1b[31;1m❌ [git-push-gate] 依赖缺失报错 (Missing Browser Dependency)\x1b[0m
+\x1b[31;1m❌ [git-approval-gate] 依赖缺失报错 (Missing Browser Dependency)\x1b[0m
 检测到当前处于图形桌面环境，但系统中未找到 Chromium 架构浏览器！
 门禁弹窗需要调用 Chromium 架构浏览器（以 --app 独立卡片模式渲染居中审计框）。
 
@@ -194,7 +194,7 @@ else if (isTTY) {
 // 4.3 无头非交互环境 (Fail-Closed)
 else {
   console.error(`
-\x1b[31;1m❌ [git-push-gate: SECURITY BLOCKED]\x1b[0m
+\x1b[31;1m❌ [git-approval-gate: SECURITY BLOCKED]\x1b[0m
 检测到正在向公开远端 (\x1b[33m${remoteUrl || 'public remote'}\x1b[0m) 执行推送！
 当前运行环境为【无头 / 非交互】模式（未连接图形会话且无 TTY 交互终端）。
 根据人机确认安全原则，公开仓推送必须经由人工交互确认，已阻断推送！
@@ -262,7 +262,7 @@ function runGuiGate(browserBin) {
 <html>
 <head>
 <meta charset="utf-8">
-<title>🚨 公开仓推送权限门禁 (git-push-gate)</title>
+<title>🚨 公开仓推送权限门禁 (git-approval-gate)</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -368,7 +368,7 @@ function runGuiGate(browserBin) {
       console.log(`[PUSHGATE_READY] port=${port} cdp=${cdpPort}`);
     }
 
-    const profileDir = process.env.PUSHGATE_PROFILE_DIR || '/tmp/git-push-gate-profile';
+    const profileDir = process.env.PUSHGATE_PROFILE_DIR || '/tmp/git-approval-gate-profile';
 
     const chromeArgs = [
       `--app=http://127.0.0.1:${port}`,
@@ -406,7 +406,7 @@ function runGuiGate(browserBin) {
     };
 
     if (process.platform === 'linux') {
-      notify('notify-send', ['-u', 'critical', '-a', 'git-push-gate',
+      notify('notify-send', ['-u', 'critical', '-a', 'git-approval-gate',
         '公开仓推送待授权', '请到授权卡片上点击「✅ 授权推送」']);
       try { fs.writeSync(fs.openSync('/dev/tty', 'w'), '\x07'); } catch {}
     } else {
@@ -464,7 +464,7 @@ function runTuiGate() {
   }
 
   print('\n\x1b[35;1m====================================================================\x1b[0m');
-  print('\x1b[31;1m🚨 [git-push-gate] 公开仓推送安全审计门禁 (TTY 终端交互模式)\x1b[0m');
+  print('\x1b[31;1m🚨 [git-approval-gate] 公开仓推送安全审计门禁 (TTY 终端交互模式)\x1b[0m');
   print('\x1b[35;1m====================================================================\x1b[0m');
   print(`\x1b[34m目标仓库:\x1b[0m ${repoName}`);
   print(`\x1b[34m远端地址:\x1b[0m ${remoteUrl}`);
