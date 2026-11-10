@@ -212,6 +212,28 @@ await runTestCase('私有仓免审放行 (.internal 域名)', async () => {
   assert.strictEqual(res.code, 0, `.internal 应该以 0 退出，实际退出码: ${res.code}`);
 });
 
+await runTestCase('私有快路径：自定义 privatePattern 免审（非外层调用）', async () => {
+  const res = await runProcess(['origin', 'https://github.com/CNCSMonster/git-approval-gate.git'], {
+    PUSHGATE_PRIVATE_PATTERN: '.*',
+    PUSHGATE_FORCE_HEADLESS: '1',
+    DISPLAY: '',
+    WAYLAND_DISPLAY: ''
+  });
+  assert.strictEqual(res.code, 0, `自定义私有模式应免审放行，实际退出码: ${res.code}`);
+});
+
+await runTestCase('外层强制公开：PUSHGATE_FORCE_PUBLIC 跳过私有快路径', async () => {
+  const res = await runProcess(['origin', 'https://github.com/CNCSMonster/git-approval-gate.git'], {
+    PUSHGATE_PRIVATE_PATTERN: '.*',
+    PUSHGATE_FORCE_PUBLIC: '1',
+    PUSHGATE_FORCE_HEADLESS: '1',
+    DISPLAY: '',
+    WAYLAND_DISPLAY: ''
+  });
+  assert.strictEqual(res.code, 1, `外层已判定公开时不得被私有模式放行，实际退出码: ${res.code}`);
+  assert.ok(res.stderr.includes('SECURITY BLOCKED'), '应输出安全阻断提示');
+});
+
 // -------------------------------------------------------------
 // 测试 2：无头 / 非交互环境下向公开远端推送必须安全阻断 (Fail-Closed)
 // -------------------------------------------------------------

@@ -83,6 +83,8 @@ You can configure custom private hosts via Git config:
 git config --global pushgate.privatePattern "my-private-host|git\.mycompany\.com"
 ```
 
+> When invoked by an outer gate that has already classified the remote as public, the caller sets `PUSHGATE_FORCE_PUBLIC=1`. This skips the private fast-path, so a broad `privatePattern` cannot silently approve a public push.
+
 ---
 
 ## 🧪 Verification & Testing

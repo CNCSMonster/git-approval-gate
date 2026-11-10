@@ -60,7 +60,12 @@ if (customPattern) {
   } catch {}
 }
 
-const isPrivate = privatePatterns.some((pattern) => pattern.test(remoteUrl));
+// 外层 git-time-gate 已按 remote-url 分流；它调用本工具时设置
+// PUSHGATE_FORCE_PUBLIC=1，明确要求走公开仓的人工确认，不能再让 URL 子串或
+// pushgate.privatePattern 把本次推送降级为“私有免审”。
+const isPrivate = process.env.PUSHGATE_FORCE_PUBLIC === '1'
+  ? false
+  : privatePatterns.some((pattern) => pattern.test(remoteUrl));
 if (isPrivate) {
   // 私有仓库推送，0 秒静默放行，不打扰开发
   process.exit(0);

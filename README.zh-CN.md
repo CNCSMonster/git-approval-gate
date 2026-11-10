@@ -83,6 +83,8 @@ pre-commit install --hook-type pre-push
 git config --global pushgate.privatePattern "my-private-host|git\.mycompany\.com"
 ```
 
+> 外层闸门（如 `git-time-gate`）已经判定公开时，会设置 `PUSHGATE_FORCE_PUBLIC=1`，强制跳过私有快路径。这样宽泛的 `privatePattern` 不会把公开推送静默放行。
+
 ---
 
 ## 🧪 安装验证与测试
